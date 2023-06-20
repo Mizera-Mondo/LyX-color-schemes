@@ -13,7 +13,7 @@
 \set_color "inlinecompletion" "#9a9a9a"
 \set_color "nonuniqueinlinecompletion" "#5d5d5d"
 \set_color "note" "#ff8e41"
-\set_color "notebg" "#e5b352"
+\set_color "notebg" "#3b455b"
 \set_color "comment" "#d2a6fd"
 \set_color "commentbg" "#0b0d13"
 \set_color "greyedoutbg" "#faf0e6"
