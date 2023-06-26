@@ -7,24 +7,26 @@ function Select-File {
         [string]$Filter
     )
 
-    # 加载 System.Windows.Forms 程序集
+    # load System.Windows.Forms program assembly
     Add-Type -AssemblyName System.Windows.Forms
 
-    # 创建 OpenFileDialog 对象
+    # create OpenFileDialog object
     $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
 
-    # 设置对话框属性
+    # set properties of OpenFileDialog object
     $openFileDialog.Title = $Title
     $openFileDialog.Filter = $Filter
 
-    # 显示选择文件对话框
+    # show the dialog
     $result = $openFileDialog.ShowDialog()
 
-    # 检查用户是否点击了 "确定" 按钮
+    # check if user click OK
     if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
-        # return the selected file
         return $openFileDialog.FileName
 
+    }
+    else {
+        return $null
     }
 
 }
@@ -32,7 +34,7 @@ function Select-File {
 #the function get content from filePath and call Get-LyX-Path function to get the path of LyX folder
 #then call Set-Color-Scheme function with the content and the path of LyX folder as parameters
 #existence check of filePath is done so no need to check again
-function Load-Color-Scheme {
+function Get-And-Apply-Color-Scheme {
     param(
         [Parameter(Mandatory=$true)]
         [string]$filePath
@@ -42,12 +44,17 @@ function Load-Color-Scheme {
     $fileContent = Get-Content $filePath
 
     # get the path of LyX folder
-    $lyxPath = Get-LyX-Path
-
+    $lyxPath = Get-LyX-Preference-Path
+    Write-Output $lyxPath
     # check if lyxPath is not null
     if ($null -ne $lyxPath) {
         # set the color scheme
-        Set-Color-Scheme $fileContent "$lyxPath\LyX2.3\Resources\ui\color-schemes\default.lyxrc"
+        if (Test-Theme $filePath) {
+            #Set-Color-Scheme $fileContent $lyxPath
+        }
+        else {
+            Write-Host "File '$filePath' is not a valid LyX color scheme file." -ForegroundColor Red
+        }
     }
     # if lyxPath is null
     else {
@@ -58,7 +65,7 @@ function Load-Color-Scheme {
 
 # function that checks if there's a folder start with LyX in roaming folder under appdata
 # return the path of the folder if found, otherwise return null
-function Get-LyX-Path {
+function Get-LyX-Preference-Path {
     # get the path of roaming folder under appdata
     $appDataPath = [Environment]::GetFolderPath("ApplicationData")
 
@@ -69,8 +76,12 @@ function Get-LyX-Path {
     foreach ($folder in $folders) {
         # check if folder name starts with LyX
         if ($folder.Name.StartsWith("LyX")) {
-            # return the path of the folder
-            return $folder.FullName
+            # check if there's a file named preference in the folder
+            if (Test-Path ($folder.FullName + "\preferences")) {
+                # return the path of the folder with preference file
+                return ($folder.FullName + "\preferences")
+            }
+            
         }
     }
 
@@ -81,6 +92,7 @@ function Get-LyX-Path {
 # function that takes 2 parameters, fileContent and targetFilePath
 # load the fileContent into the targetFilePath
 function Set-Color-Scheme {
+    #TODO: Replace color codes
     param(
         [Parameter(Mandatory=$true)]
         [string]$fileContent,
@@ -100,11 +112,29 @@ function Set-Color-Scheme {
     }
 }
 
+function Test-Theme {
+    # take a file path as argument
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$filePath
+    )
+    # load content
+    $fileContent = Get-Content $filePath
+    # check if the 1st line is a single # character
+    # if the 2nd line starts with # COLOR SECTION
+    # if the 3rd line is a single # character
+    # if all conditions are met, return true
+    if ($fileContent[0] -eq "#" -and $fileContent[1].StartsWith("# COLOR SECTION") -and $fileContent[2] -eq "#") {
+        return $true
+    }
+    else {
+        return $false
+    }
+}
 
 
 
 $filePaths = $args
-
 # check if count of filepaths > 0
 if ($filePaths.Count -gt 0) {
     # load only the first file
@@ -112,8 +142,8 @@ if ($filePaths.Count -gt 0) {
 
     # check if file exists
     if (Test-Path $filePath) {
-        # load the file
-        . $filePath
+        # apply the color scheme
+        Get-And-Apply-Color-Scheme $filePath
     }
     # if file does not exist
     else {
@@ -121,19 +151,27 @@ if ($filePaths.Count -gt 0) {
         Write-Host "File '$filePath' does not exist." -ForegroundColor Red
     }
 }
+
 # if count of filepaths <= 0, prompt user to select a file
 else {
     # prompt user to select a file
-    $filePath = Select-File -Title "Select a LyX color scheme file" -Filter "LyX Color Scheme Files (*.lyxtheme)|*.lyxtheme"
-
-    # check if file exists
-    if (Test-Path $filePath) {
-        # load the file
-        . $filePath
+    $filePath = Select-File -Title "Select a LyX color scheme file" -Filter "LyX Color Scheme (*.lyxtheme)|*.lyxtheme"
+    # check if $filePath is not null
+    if ($null -ne $filePath) {
+        # check if file exists
+        if (Test-Path $filePath) {
+            Get-And-Apply-Color-Scheme $filePath
+        }
+        # if file does not exist
+        else {
+            # show error message
+            Write-Host "File '$filePath' does not exist." -ForegroundColor Red
+        }
     }
-    # if file does not exist
+    # if $filePath is null
     else {
         # show error message
-        Write-Host "File '$filePath' does not exist." -ForegroundColor Red
+        Write-Host "No file selected." -ForegroundColor Red
     }
+
 }
