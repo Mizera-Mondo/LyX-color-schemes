@@ -8,5 +8,7 @@
 
 On locating the file and code details, follow instructions from LyX official [here](https://wiki.lyx.org/Tips/ColorSchemes). 
 
+# TODO
+A PowerShell-based theme selector for easy updating color schemes.
 # Reference
 [ayu-colors](https://github.com/ayu-theme/ayu-colors)
