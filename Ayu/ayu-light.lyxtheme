@@ -1,4 +1,3 @@
-#
 # COLOR SECTION ###################################
 #
 
@@ -70,3 +69,5 @@
 \set_color "paragraphmarker" "#4abe99"
 \set_color "previewframe" "#000000"
 \set_color "regexpframe" "#bebcb5"
+
+#

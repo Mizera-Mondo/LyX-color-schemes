@@ -4,7 +4,10 @@ function Select-File {
         [Parameter(Mandatory=$true)]
         [string]$Title,
         [Parameter(Mandatory=$true)]
-        [string]$Filter
+        [string]$Filter,
+        [Parameter(Mandatory=$false)]
+        [string]$InitialDirectory = [Environment]::GetFolderPath("Desktop")
+
     )
 
     # load System.Windows.Forms program assembly
@@ -16,7 +19,7 @@ function Select-File {
     # set properties of OpenFileDialog object
     $openFileDialog.Title = $Title
     $openFileDialog.Filter = $Filter
-
+    $openFileDialog.InitialDirectory = $InitialDirectory
     # show the dialog
     $result = $openFileDialog.ShowDialog()
 
@@ -41,16 +44,18 @@ function Get-And-Apply-Color-Scheme {
     )
 
     # get content from filePath
-    $fileContent = Get-Content $filePath
+    $fileContent = Get-Content $filePath -Raw
 
     # get the path of LyX folder
     $lyxPath = Get-LyX-Preference-Path
-    Write-Output $lyxPath
+    Write-Host ("Found LyX Preference file: " + $lyxPath) -Foregroundcolor Green
     # check if lyxPath is not null
     if ($null -ne $lyxPath) {
         # set the color scheme
         if (Test-Theme $filePath) {
-            #Set-Color-Scheme $fileContent $lyxPath
+            $nameOfTheme = $filePath.Substring($filePath.LastIndexOf("\") + 1);
+            Write-Host "Successfully loaded color scheme file: $nameOfTheme" -ForegroundColor Green
+            Set-Color-Scheme $fileContent $lyxPath
         }
         else {
             Write-Host "File '$filePath' is not a valid LyX color scheme file." -ForegroundColor Red
@@ -92,7 +97,6 @@ function Get-LyX-Preference-Path {
 # function that takes 2 parameters, fileContent and targetFilePath
 # load the fileContent into the targetFilePath
 function Set-Color-Scheme {
-    #TODO: Replace color codes
     param(
         [Parameter(Mandatory=$true)]
         [string]$fileContent,
@@ -102,13 +106,28 @@ function Set-Color-Scheme {
 
     # check if targetFilePath exists
     if (Test-Path $targetFilePath) {
-        # load the fileContent into the targetFilePath
-        $fileContent | Out-File $targetFilePath
+        $targetFileContent = Get-Content $targetFilePath -Raw -Encoding utf8
+        $startIndex = $targetFileContent.IndexOf("# COLOR SECTION")
+        $endIndex = $targetFileContent.IndexOf("# PRINTER SECTION")
+        # $debugContent = $targetFileContent.Substring($startIndex, $endIndex - $startIndex - 1)
+        if ($startIndex -lt 0 -or $endIndex -lt 0) {
+            Write-Host "Cannot find color scheme code section. The LyX preference may be broken." -ForegroundColor Red
+            return $null
+        }
+        else {
+            $targetFileContent = $targetFileContent.Remove($startIndex, $endIndex - $startIndex - 1)
+            $targetFileContent = $targetFileContent.Insert($startIndex, $fileContent)
+            $targetFileContent | Out-File $targetFilePath -Encoding utf8
+            Write-Host "Color scheme applied." -ForegroundColor Green
+            Write-Host "Please restart LyX to see the changes." -ForegroundColor Green
+        }
+
     }
     # if targetFilePath does not exist
     else {
         # show error message
         Write-Host "File '$targetFilePath' does not exist." -ForegroundColor Red
+        return $null
     }
 }
 
@@ -120,11 +139,8 @@ function Test-Theme {
     )
     # load content
     $fileContent = Get-Content $filePath
-    # check if the 1st line is a single # character
-    # if the 2nd line starts with # COLOR SECTION
-    # if the 3rd line is a single # character
-    # if all conditions are met, return true
-    if ($fileContent[0] -eq "#" -and $fileContent[1].StartsWith("# COLOR SECTION") -and $fileContent[2] -eq "#") {
+    # if the 1st line starts with # COLOR SECTION
+    if ($fileContent[0].StartsWith("# COLOR SECTION")) {
         return $true
     }
     else {
@@ -155,7 +171,8 @@ if ($filePaths.Count -gt 0) {
 # if count of filepaths <= 0, prompt user to select a file
 else {
     # prompt user to select a file
-    $filePath = Select-File -Title "Select a LyX color scheme file" -Filter "LyX Color Scheme (*.lyxtheme)|*.lyxtheme"
+    $currentPath = Get-Location
+    $filePath = Select-File "Select a LyX color scheme file" "Color Scheme (*.lyxtheme)|*.lyxtheme" $currentPath
     # check if $filePath is not null
     if ($null -ne $filePath) {
         # check if file exists
@@ -175,3 +192,7 @@ else {
     }
 
 }
+
+# Press anykey to exit
+Write-Host "Press any key to continue..."
+[void][System.Console]::ReadKey($true)
