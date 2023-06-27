@@ -1,5 +1,6 @@
 # LyX-color-schemes
  Some editor color schemes for LyX, with scheme selector based on PowerShell.
+ 
  Note that some themes are NOT verbatim with the original palettes; some choices of the colors are modified for better look under LyX environment.
  
 # How to Use
